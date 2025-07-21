@@ -14,7 +14,17 @@ def _():
     from sklearn.linear_model import LogisticRegression
     from sklearn.svm import LinearSVC
     from sklearn.metrics import accuracy_score, classification_report
-    return TfidfVectorizer, mo, pd, train_test_split
+    return (
+        BernoulliNB,
+        LinearSVC,
+        LogisticRegression,
+        TfidfVectorizer,
+        accuracy_score,
+        classification_report,
+        mo,
+        pd,
+        train_test_split,
+    )
 
 
 @app.cell
@@ -106,7 +116,7 @@ def _(df_1, train_test_split):
 
     print("Train size:", len(X_train))
     print("Test size:", len(X_test))
-    return X_test, X_train
+    return X_test, X_train, y_test, y_train
 
 
 @app.cell
@@ -129,6 +139,122 @@ def _(TfidfVectorizer, X_test, X_train):
 
     print("TF-IDF shape (train):", X_train_tfidf.shape)
     print("TF-IDF shape (test):", X_test_tfidf.shape)
+    return X_test_tfidf, X_train_tfidf, vectorizer
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    ## Train Bernoulli Naive Bayes model
+    Train a Bernoulli Naive Bayes classifier on the TF IDF features from the training data. It predicts sentiments for the test data and then prints the accuracy and a detailed classification report.
+    """
+    )
+    return
+
+
+@app.cell
+def _(
+    BernoulliNB,
+    X_test_tfidf,
+    X_train_tfidf,
+    accuracy_score,
+    classification_report,
+    y_test,
+    y_train,
+):
+    bnb = BernoulliNB()
+    bnb.fit(X_train_tfidf, y_train)
+
+    bnb_pred = bnb.predict(X_test_tfidf)
+
+    print("Bernoulli Naive Bayes Accuracy:", accuracy_score(y_test, bnb_pred))
+    print("\nBernoulliNB Classification Report:\n", classification_report(y_test, bnb_pred))
+    return (bnb,)
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    ## Train Support Vector Machine (SVM) Model
+    This trains a SVM with a maximum of 1000 iterations on the TF IDF features. It predicts test laels then prints accuracy and a detailed report.
+    """
+    )
+    return
+
+
+@app.cell
+def _(
+    LinearSVC,
+    X_test_tfidf,
+    X_train_tfidf,
+    accuracy_score,
+    classification_report,
+    y_test,
+    y_train,
+):
+    svm = LinearSVC(max_iter=1000)
+    svm.fit(X_train_tfidf, y_train)
+
+    svm_pred = svm.predict(X_test_tfidf)
+
+    print("SVM Accuracy:", accuracy_score(y_test, svm_pred))
+    print("\nSVM Classification Report:\n", classification_report(y_test, svm_pred))
+    return (svm,)
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    ## Train Logistic Regression model
+    This trains a Logistic Regression model with up to 100 iterations on the TF IDF features. Predicts labels for the test data and prints the accuracy and detailed report.
+    """
+    )
+    return
+
+
+@app.cell
+def _(
+    LogisticRegression,
+    X_test_tfidf,
+    X_train_tfidf,
+    accuracy_score,
+    classification_report,
+    y_test,
+    y_train,
+):
+    logreg = LogisticRegression(max_iter=100)
+    logreg.fit(X_train_tfidf, y_train)
+
+    logreg_pred = logreg.predict(X_test_tfidf)
+
+    print("Logistic Regression Accuracy:", accuracy_score(y_test, logreg_pred))
+    print("\nLogistic Regression Classification Report:\n", classification_report(y_test, logreg_pred))
+    return (logreg,)
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    ## Make predictions on sample tweets
+    Take sample tweets and transforms them into TF IDF features using same vectoriser. Predicts their sentiment using the trained BernoulliNB, SVM and Logistic Regression models and prints the results for each classifier. 1 stands for positive and 0 for negative.
+    """
+    )
+    return
+
+
+@app.cell
+def _(bnb, logreg, svm, vectorizer):
+    sample_tweets = ["I love this!", "I hate that!", "It was okay, not great."]
+    sample_vec = vectorizer.transform(sample_tweets)
+
+    print("\nSample Predictions:")
+    print("BernoulliNB:", bnb.predict(sample_vec))
+    print("SVM:", svm.predict(sample_vec))
+    print("Logistic Regression:", logreg.predict(sample_vec))
     return
 
 
