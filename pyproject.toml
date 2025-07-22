@@ -7,11 +7,14 @@ requires-python = ">=3.13"
 dependencies = [
     "customtkinter>=5.2.2",
     "marimo>=0.14.12",
+    "matplotlib>=3.10.3",
     "numpy>=2.2.6",
     "opencv-python>=4.12.0.88",
     "pandas>=2.3.1",
     "pillow>=11.3.0",
     "scikit-learn>=1.7.1",
+    "seaborn>=0.13.2",
     "torch>=2.7.1",
     "transformers>=4.53.3",
+    "wordcloud>=1.9.4",
 ]

@@ -8,22 +8,41 @@ app = marimo.App(width="medium")
 def _():
     import marimo as mo
     import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    from wordcloud import WordCloud
+    import re
+    import zipfile
+    import requests
+    from io import BytesIO
+    import os
+
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.model_selection import train_test_split
-    from sklearn.naive_bayes import BernoulliNB
+    from sklearn.naive_bayes import MultinomialNB
     from sklearn.linear_model import LogisticRegression
     from sklearn.svm import LinearSVC
-    from sklearn.metrics import accuracy_score, classification_report
+    from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
     return (
-        BernoulliNB,
+        BytesIO,
         LinearSVC,
         LogisticRegression,
+        MultinomialNB,
         TfidfVectorizer,
+        WordCloud,
         accuracy_score,
         classification_report,
+        confusion_matrix,
         mo,
+        os,
         pd,
+        plt,
+        re,
+        requests,
+        sns,
         train_test_split,
+        zipfile,
     )
 
 
@@ -39,11 +58,40 @@ def _(mo):
 
 
 @app.cell
-def _(pd):
-    df = pd.read_csv('data/training.1600000.processed.noemoticon.csv', encoding='latin-1', header=None)
-    df = df[[0,5]]
-    df.columns = ['polarity', 'text']
-    print(df.head())
+def _(BytesIO, os, pd, requests, zipfile):
+    # Define the file path
+    file_path = 'data/training.1600000.processed.noemoticon.csv'
+
+    # Check if file already exists
+    if os.path.exists(file_path):
+        print("File already exists, loading from local storage...")
+        df = pd.read_csv(file_path)
+        # The saved file should already have 'text' and 'polarity' columns
+    else:
+        print("File not found, downloading...")
+        # Make sure the 'data' directory exists
+        os.makedirs('data', exist_ok=True)
+    
+        # Download and extract
+        url = "https://cs.stanford.edu/people/alecmgo/trainingandtestdata.zip"
+        response = requests.get(url)
+        zip_file = zipfile.ZipFile(BytesIO(response.content))
+        csv_file = zip_file.open('training.1600000.processed.noemoticon.csv')
+    
+        # Load into DataFrame
+        df = pd.read_csv(csv_file, encoding='latin-1', header=None)
+        df.columns = ['polarity', 'id', 'date', 'query', 'user', 'text']
+    
+        # Select only the columns we need
+        df = df[['text', 'polarity']]
+    
+        # Save the filtered DataFrame
+        df.to_csv(file_path, index=False)
+        print("File downloaded and saved!")
+
+    # Check what columns we actually have
+    print("Columns:", df.columns.tolist())
+    df.head()
     return (df,)
 
 
@@ -53,45 +101,30 @@ def _(mo):
         r"""
     ## Keep positive and negative sentiments
     Remove the neutral tweets where polarity is 2. Then map labels so that 0 represents negative and then assign 1 for positive. Then calculate the number of positive and negative left in the dataset.
+    Simple function to convert all text to lowercase so it is consistent and remove unwanted content like urls, mentions, hashtags.
     """
     )
     return
 
 
 @app.cell
-def _(df):
-    def sentiment(df):
-        df = df[df.polarity !=2]
-        df['polarity'] = df['polarity'].map({0: 0, 4: 1})
-        return df
+def _(df, re):
+    def preprocess_text(text):
+        text = text.lower()
+        text = re.sub(r'http\S+', '', text)
+        text = re.sub(r'@\w+', '', text)
+        text = re.sub(r'#\w+', '', text)
+        text = re.sub(r'\d+', '', text)
+        text = re.sub(r'[^\w\s]', '', text)
+        return text
 
-    sentiment(df)
+
+    df['text'] = df['text'].apply(preprocess_text)
+    df['polarity'] = df['polarity'].map({4: 1, 2: 0, 0: -1})
     print(df['polarity'].value_counts())
     print(df.head())
-    return (sentiment,)
 
-
-@app.cell
-def _(mo):
-    mo.md(
-        r"""
-    ## Now clean the tweets
-    Simple function to convert all text to lowercase so it is consistent then show original and cleaned tweets
-    """
-    )
     return
-
-
-@app.cell
-def _(df, sentiment):
-    def clean_text(text):
-        return text.lower()
-
-    df_1 = sentiment(df)
-    df_1['clean_text'] = df_1['text'].apply(clean_text)
-
-    print(df_1[['text', 'clean_text']].head())
-    return (df_1,)
 
 
 @app.cell
@@ -106,10 +139,10 @@ def _(mo):
 
 
 @app.cell
-def _(df_1, train_test_split):
+def _(df, train_test_split):
     X_train, X_test, y_train, y_test = train_test_split(
-        df_1['clean_text'],
-        df_1['polarity'],
+        df['text'],
+        df['polarity'],
         test_size=0.2,
         random_state=42
     )
@@ -146,8 +179,8 @@ def _(TfidfVectorizer, X_test, X_train):
 def _(mo):
     mo.md(
         r"""
-    ## Train Bernoulli Naive Bayes model
-    Train a Bernoulli Naive Bayes classifier on the TF IDF features from the training data. It predicts sentiments for the test data and then prints the accuracy and a detailed classification report.
+    ## Train Multinomial Naive Bayes model
+    Train a Multinomial Naive Bayes classifier on the TF IDF features from the training data. It predicts sentiments for the test data and then prints the accuracy and a detailed classification report.
     """
     )
     return
@@ -155,22 +188,76 @@ def _(mo):
 
 @app.cell
 def _(
-    BernoulliNB,
+    MultinomialNB,
     X_test_tfidf,
     X_train_tfidf,
     accuracy_score,
     classification_report,
+    confusion_matrix,
     y_test,
     y_train,
 ):
-    bnb = BernoulliNB()
-    bnb.fit(X_train_tfidf, y_train)
+    mnb = MultinomialNB()
+    mnb.fit(X_train_tfidf, y_train)
 
-    bnb_pred = bnb.predict(X_test_tfidf)
+    mnb_pred = mnb.predict(X_test_tfidf)
 
-    print("Bernoulli Naive Bayes Accuracy:", accuracy_score(y_test, bnb_pred))
-    print("\nBernoulliNB Classification Report:\n", classification_report(y_test, bnb_pred))
-    return (bnb,)
+    print("Multinomial Naive Bayes Accuracy:", accuracy_score(y_test, mnb_pred))
+    print("\nMultinomial Confusion Matrix:\n", confusion_matrix(y_test, mnb_pred))
+    print("\nMultinomialNB Classification Report:\n", classification_report(y_test, mnb_pred))
+    return (mnb_pred,)
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    ## Dashboard for Data Visualisation
+    Simple dashboard to look at the sentiment distribution, word cloud, and confusion matric
+
+    1. Sentiment Distribution — A bar chart showing the number of positive, neutral, and negative tweets.
+    2. Word Cloud — A visual representation of the most common words in the dataset.
+    3. Sentiment Pie Chart — A pie chart showing the percentage distribution of sentiment categories.
+    4. Confusion Matrix — A heatmap showing the performance of the model’s predictions.
+    """
+    )
+    return
+
+
+@app.cell
+def _(WordCloud, confusion_matrix, df, mnb_pred, plt, sns, y_test):
+    def create_dashboard():
+        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+    
+        # Sentiment Distribution
+        sns.countplot(x='polarity', data=df, ax=axes[0, 0])
+        axes[0, 0].set_title('Sentiment Distribution')
+    
+        # Word Cloud
+        text = ' '.join(df['text'])
+        wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
+        axes[0, 1].imshow(wordcloud, interpolation='bilinear')
+        axes[0, 1].axis('off')
+        axes[0, 1].set_title('Word Cloud')
+    
+        # Sentiment Pie Chart
+        sentiment_counts = df['polarity'].value_counts()
+        # Check the unique values in the 'polarity' column
+        labels = sentiment_counts.index.tolist() 
+        axes[1, 0].pie(sentiment_counts, labels=labels, autopct='%1.1f%%', startangle=140) #Use the labels derived from the sentiment_counts variable
+        axes[1, 0].set_title('Sentiment Pie Chart')
+    
+        # Confusion Matrix
+        sns.heatmap(confusion_matrix(y_test, mnb_pred), annot=True, fmt='d', cmap='Blues', ax=axes[1, 1])
+        axes[1, 1].set_title('Confusion Matrix')
+        axes[1, 1].set_xlabel('Predicted')
+        axes[1, 1].set_ylabel('Actual')
+    
+        plt.tight_layout()
+        plt.show()
+
+    create_dashboard()
+    return
 
 
 @app.cell
