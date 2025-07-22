@@ -78,6 +78,14 @@ Note: uv provides faster dependency resolution and installation compared to pip.
 ```bash
 python twitter_sentiment.py
 ```
+Or using uv you can run using the following:
+```bash
+uv run twitter_sentiment.py
+```
+Or to edit the file and run in the code blocks:
+```bash
+uv run marimo edit twitter_sentiment.py
+```
 
 The Marimo notebook provides an interactive interface where you can:
 - Load and preprocess the Sentiment140 dataset
