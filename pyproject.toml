@@ -14,3 +14,6 @@ dependencies = [
     "torch>=2.7.1",
     "transformers>=4.53.3",
 ]
+
+[project.scripts]
+ctk_app = "interactive_sentiment_analysis.ctk.ctk_app:main"
