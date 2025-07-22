@@ -34,7 +34,7 @@ class SentimentAnalysisPipeline:
             label: str = label_score_dict["label"]
             score: float = label_score_dict["score"]
 
-            if label in slef.label_mapping:
+            if label in self.label_mapping:
                 positivity += self.label_mapping[label] * score
         positivity = np.clip(positivity, -1, 1)
         return positivity

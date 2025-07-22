@@ -15,6 +15,7 @@ def color_hsv_to_bgr(hue: float, saturation: float, value: float) -> tuple[int, 
     """
     px_img_hsv = np.array([[[hue * 180, saturation * 255, value * 255]]], dtype=np.uint8)
     px_img_bgr = cv2.cvtColor(px_img_hsv, cv2.COLOR_HSV2BGR)
+    b, g, r = px_img_bgr[0][0]
     return int(b), int(g), int(r)
 
 def create_sentiment_image(positivity:float, image_size: tuple[int, int]) -> np.ndarray:
@@ -37,8 +38,8 @@ def create_sentiment_image(positivity:float, image_size: tuple[int, int]) -> np.
     center = (width // 2, height // 2)
     radius = min(image_size) // 2 -thickness_outline
 
-    colour_bgr = color_hsv_to_bgr(
-        hue(positivity + 1) / 6,
+    color_bgr = color_hsv_to_bgr(
+        hue=(positivity + 1) / 6,
         saturation=0.5,
         value=1
     )
